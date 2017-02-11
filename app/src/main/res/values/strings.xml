@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">DataCollectionTest</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="title">Title</string>
+    <string name="cancel">Cancel</string>
+    <string name="submit">Submit</string>
+    <string name="Upload">Upload</string>
+    <string name="description">Description</string>
+    <string name="location">Address</string>
+    <string name="blank_error">Can\'t be blank</string>
+    <string name="category">Category</string>
+</resources>
