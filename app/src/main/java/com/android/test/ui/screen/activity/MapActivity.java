@@ -40,7 +40,10 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
 import java.util.List;
@@ -58,6 +61,8 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
     private Button mZoomOut;
     private Button mZoomIN;
     private Button mGoBtn;
+    private MarkerOptions markerOptions;
+    private Marker marker;
 
     public boolean googleServicesAvailable() {
         GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
@@ -79,9 +84,9 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         if (googleServicesAvailable()) {
 
             setContentView(R.layout.map_layout);
-            final LocationManager manager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
+            final LocationManager manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-            if ( !manager.isProviderEnabled( LocationManager.GPS_PROVIDER ) ) {
+            if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 gpsDisableDialog();
             }
             initView();
@@ -144,6 +149,32 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
+
+        mGoogleMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+            @Override
+            public void onMarkerDragStart(Marker marker) {
+
+            }
+
+            @Override
+            public void onMarkerDrag(Marker marker) {
+
+            }
+
+            @Override
+            public void onMarkerDragEnd(Marker marker) {
+                List<Address> list = null;
+                Geocoder geocoder = new Geocoder(MapActivity.this);
+                LatLng latLng = marker.getPosition();
+                try {
+                    list = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                setMarker(latLng.latitude, latLng.longitude, list);
+            }
+        });
+
         mGoogleMap.setMyLocationEnabled(true);
         googleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).addConnectionCallbacks(this).addOnConnectionFailedListener(this).build();
         googleApiClient.connect();
@@ -173,7 +204,7 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
                 mGoogleMap.animateCamera(CameraUpdateFactory.zoomIn());
                 break;
             case R.id.zoonOutbtn:
-                mGoogleMap.animateCamera(CameraUpdateFactory.zoomIn());
+                mGoogleMap.animateCamera(CameraUpdateFactory.zoomOut());
                 break;
             case R.id.gobtn:
                 searchFromUserInput();
@@ -243,13 +274,14 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
         final AlertDialog alert = builder.create();
         alert.show();
     }
+
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         mLocationRequest = LocationRequest.create();
         mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         mLocationRequest.setInterval(1000);
 
-        LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient,mLocationRequest, this);
+        LocationServices.FusedLocationApi.requestLocationUpdates(googleApiClient, mLocationRequest, this);
     }
 
     @Override
@@ -264,13 +296,42 @@ public class MapActivity extends AppCompatActivity implements View.OnClickListen
 
     @Override
     public void onLocationChanged(Location location) {
+        List<Address> list = null;
         if (location == null) {
             Toast.makeText(this, "Unable to get location", Toast.LENGTH_SHORT).show();
         } else {
+
             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-            CameraUpdate cameraUpdate=CameraUpdateFactory.newLatLngZoom(latLng,15);
-        mGoogleMap.animateCamera(cameraUpdate);
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
+            mGoogleMap.animateCamera(cameraUpdate);
+            Geocoder geocoder = new Geocoder(MapActivity.this);
+            try {
+                list = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            setMarker(location.getLatitude(), location.getLongitude(), list);
         }
+    }
+
+    private void setMarker(double lat, double lng, List<Address> list) {
+        if (marker != null) {
+            marker.remove();
+        }
+        if (list != null) {
+            if (list.size() > 0) {
+                markerOptions = new MarkerOptions().
+                        title(list.get(0).getLocality())
+                        .snippet(list.get(0).getLatitude() + " ," + list.get(0).getLongitude())
+                        .position(new LatLng(list.get(0).getLatitude(), list.get(0).getLongitude()))
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                        .draggable(true);
+            }
+        } else {
+            markerOptions = new MarkerOptions().title("You are here !").snippet(lat + " ," + lng).position(new LatLng(lat, lng)).draggable(true);
+        }
+
+        marker = mGoogleMap.addMarker(markerOptions);
     }
 
     class GetLocationAsync extends AsyncTask<Void, Void, List<Address>> {
